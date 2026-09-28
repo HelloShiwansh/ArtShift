@@ -9,3 +9,19 @@ __pycache__/
 
 # Ignore local virtual environments
 .venv/
+
+# Ignore local configuration and runtime output
+.env
+instance/uploads/*
+!instance/uploads/.gitkeep
+*.log
+
+# Ignore test and tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Ignore new training runs while keeping the supplied reference run
+training/runs/*
+!training/runs/final_exp/
+!training/runs/final_exp/**

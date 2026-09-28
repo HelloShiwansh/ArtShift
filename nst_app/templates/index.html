@@ -1,0 +1,956 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f5ef">
+    <title>Artshift - Neural Style Transfer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
+    <style>
+        :root {
+            --ink: #171717;
+            --paper: #f5f5ef;
+            --white: #ffffff;
+            --blue: #4169e1;
+            --yellow: #ffd447;
+            --coral: #ff6b5f;
+            --mint: #79dfb2;
+            --muted: #deded5;
+            --border: 3px solid var(--ink);
+            --shadow: 7px 7px 0 var(--ink);
+        }
+
+        * {
+            box-sizing: border-box;
+            letter-spacing: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: var(--paper);
+            font-family: "Space Grotesk", Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.45;
+        }
+
+        button,
+        input {
+            font: inherit;
+        }
+
+        img {
+            display: block;
+            max-width: 100%;
+        }
+
+        a {
+            color: inherit;
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 70px;
+            padding: 12px clamp(18px, 4vw, 56px);
+            background: var(--yellow);
+            border-bottom: var(--border);
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--ink);
+            font-family: "Archivo Black", Arial Black, sans-serif;
+            font-size: clamp(1.2rem, 3vw, 1.65rem);
+            text-decoration: none;
+            text-transform: uppercase;
+        }
+
+        .brand-mark {
+            display: grid;
+            width: 34px;
+            height: 34px;
+            place-items: center;
+            background: var(--coral);
+            border: 2px solid var(--ink);
+            box-shadow: 3px 3px 0 var(--ink);
+        }
+
+        .brand-mark svg {
+            width: 19px;
+            height: 19px;
+            stroke-width: 3;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-link {
+            padding: 8px 11px;
+            border: 2px solid transparent;
+            font-weight: 700;
+            text-decoration: none;
+            text-transform: uppercase;
+        }
+
+        .nav-link:hover,
+        .nav-link:focus-visible {
+            background: var(--white);
+            border-color: var(--ink);
+            outline: 0;
+        }
+
+        main {
+            overflow: hidden;
+        }
+
+        section {
+            scroll-margin-top: 92px;
+        }
+
+        .section-inner {
+            width: min(1480px, calc(100% - 36px));
+            margin: 0 auto;
+        }
+
+        .playground {
+            min-height: calc(100vh - 70px);
+            padding: clamp(34px, 6vw, 76px) 0 70px;
+        }
+
+        .section-heading {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+
+        .section-title {
+            margin: 0;
+            max-width: 100%;
+            font-family: "Archivo Black", Arial Black, sans-serif;
+            font-size: clamp(2.25rem, 7vw, 5.8rem);
+            line-height: 0.92;
+            text-transform: uppercase;
+            overflow-wrap: anywhere;
+        }
+
+        .section-index {
+            flex: 0 0 auto;
+            padding: 7px 11px;
+            background: var(--blue);
+            border: var(--border);
+            box-shadow: 4px 4px 0 var(--ink);
+            color: var(--white);
+            font-weight: 800;
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: clamp(16px, 2vw, 28px);
+        }
+
+        .image-panel {
+            min-width: 0;
+            background: var(--white);
+            border: var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 54px;
+            padding: 10px 14px;
+            border-bottom: var(--border);
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .panel-header.content {
+            background: var(--mint);
+        }
+
+        .panel-header.style {
+            background: var(--coral);
+        }
+
+        .panel-header.result {
+            background: var(--blue);
+            color: var(--white);
+        }
+
+        .panel-number {
+            display: grid;
+            width: 28px;
+            height: 28px;
+            place-items: center;
+            background: var(--white);
+            border: 2px solid var(--ink);
+            color: var(--ink);
+            font-size: 0.82rem;
+        }
+
+        .preview {
+            position: relative;
+            display: grid;
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            place-items: center;
+            overflow: hidden;
+            background-color: #e9e9e1;
+            background-image:
+                linear-gradient(45deg, #d4d4cb 25%, transparent 25%),
+                linear-gradient(-45deg, #d4d4cb 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #d4d4cb 75%),
+                linear-gradient(-45deg, transparent 75%, #d4d4cb 75%);
+            background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+            background-size: 24px 24px;
+        }
+
+        .preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: var(--white);
+        }
+
+        .empty-state {
+            display: grid;
+            width: min(180px, 70%);
+            min-height: 132px;
+            padding: 18px;
+            place-items: center;
+            gap: 8px;
+            background: var(--paper);
+            border: 2px solid var(--ink);
+            box-shadow: 5px 5px 0 var(--ink);
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .empty-state svg {
+            width: 30px;
+            height: 30px;
+            stroke-width: 2.5;
+        }
+
+        .panel-actions {
+            min-height: 70px;
+            padding: 12px;
+            border-top: var(--border);
+        }
+
+        .file-input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .button,
+        .upload-button,
+        .download-button {
+            display: inline-flex;
+            min-height: 42px;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            padding: 9px 14px;
+            background: var(--white);
+            border: 2px solid var(--ink);
+            border-radius: 0;
+            box-shadow: 4px 4px 0 var(--ink);
+            color: var(--ink);
+            cursor: pointer;
+            font-weight: 800;
+            text-decoration: none;
+            text-transform: uppercase;
+            transition: transform 100ms ease, box-shadow 100ms ease;
+        }
+
+        .button:hover,
+        .upload-button:hover,
+        .download-button:hover,
+        .button:focus-visible,
+        .upload-button:focus-visible,
+        .download-button:focus-visible {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 var(--ink);
+            outline: 0;
+        }
+
+        .button:active,
+        .upload-button:active,
+        .download-button:active {
+            transform: translate(4px, 4px);
+            box-shadow: none;
+        }
+
+        .button svg,
+        .upload-button svg,
+        .download-button svg {
+            width: 18px;
+            height: 18px;
+            stroke-width: 3;
+        }
+
+        .upload-button {
+            width: 100%;
+            background: var(--yellow);
+        }
+
+        .download-button {
+            width: 100%;
+            background: var(--mint);
+        }
+
+        .result-waiting {
+            color: #55554e;
+        }
+
+        .control-bar {
+            display: grid;
+            grid-template-columns: minmax(220px, 1fr) minmax(280px, 2fr) auto auto;
+            gap: 20px;
+            align-items: center;
+            margin-top: 30px;
+            padding: 20px;
+            background: var(--yellow);
+            border: var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .strength-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .strength-value {
+            display: grid;
+            min-width: 52px;
+            height: 40px;
+            place-items: center;
+            background: var(--white);
+            border: 2px solid var(--ink);
+            font-weight: 800;
+        }
+
+        .strength-range {
+            width: 100%;
+            height: 36px;
+            margin: 0;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .strength-range::-webkit-slider-runnable-track {
+            height: 12px;
+            background: var(--white);
+            border: 2px solid var(--ink);
+        }
+
+        .strength-range::-webkit-slider-thumb {
+            width: 28px;
+            height: 28px;
+            margin-top: -10px;
+            appearance: none;
+            background: var(--coral);
+            border: 3px solid var(--ink);
+            border-radius: 0;
+            box-shadow: 3px 3px 0 var(--ink);
+        }
+
+        .strength-range::-moz-range-track {
+            height: 9px;
+            background: var(--white);
+            border: 2px solid var(--ink);
+        }
+
+        .strength-range::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            background: var(--coral);
+            border: 3px solid var(--ink);
+            border-radius: 0;
+            box-shadow: 3px 3px 0 var(--ink);
+        }
+
+        .icon-button {
+            display: grid;
+            width: 48px;
+            height: 48px;
+            place-items: center;
+            background: var(--white);
+            border: 2px solid var(--ink);
+            box-shadow: 4px 4px 0 var(--ink);
+            color: var(--ink);
+            transition: transform 100ms ease, box-shadow 100ms ease;
+        }
+
+        .icon-button:hover,
+        .icon-button:focus-visible {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 var(--ink);
+            outline: 0;
+        }
+
+        .icon-button svg {
+            width: 20px;
+            height: 20px;
+            stroke-width: 3;
+        }
+
+        .generate-button {
+            min-width: 190px;
+            min-height: 52px;
+            background: var(--blue);
+            color: var(--white);
+        }
+
+        .error-message {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 24px;
+            padding: 14px 16px;
+            background: var(--coral);
+            border: var(--border);
+            box-shadow: 5px 5px 0 var(--ink);
+            font-weight: 700;
+        }
+
+        .error-message svg {
+            flex: 0 0 auto;
+            width: 22px;
+            height: 22px;
+            stroke-width: 3;
+        }
+
+        .examples {
+            padding: clamp(54px, 8vw, 100px) 0 110px;
+            background: var(--blue);
+            border-top: var(--border);
+        }
+
+        .examples .section-title {
+            color: var(--white);
+        }
+
+        .examples .section-index {
+            background: var(--coral);
+            color: var(--ink);
+        }
+
+        .example-list {
+            display: grid;
+            gap: 28px;
+        }
+
+        .example-case {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+            gap: clamp(10px, 1.5vw, 22px);
+            align-items: center;
+            padding: clamp(14px, 2vw, 24px);
+            background: var(--paper);
+            border: var(--border);
+            box-shadow: 9px 9px 0 var(--ink);
+        }
+
+        .example-step {
+            min-width: 0;
+        }
+
+        .example-label {
+            display: inline-block;
+            margin-bottom: 9px;
+            padding: 5px 8px;
+            border: 2px solid var(--ink);
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .example-step:nth-child(1) .example-label {
+            background: var(--mint);
+        }
+
+        .example-step:nth-child(3) .example-label {
+            background: var(--coral);
+        }
+
+        .example-step:nth-child(5) .example-label {
+            background: var(--yellow);
+        }
+
+        .example-image {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            object-fit: contain;
+            background: var(--white);
+            border: 2px solid var(--ink);
+        }
+
+        .example-operator {
+            display: grid;
+            width: 46px;
+            height: 46px;
+            place-items: center;
+            background: var(--white);
+            border: 2px solid var(--ink);
+            box-shadow: 4px 4px 0 var(--ink);
+        }
+
+        .example-operator svg {
+            width: 22px;
+            height: 22px;
+            stroke-width: 3;
+        }
+
+        .loader {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: none;
+            place-items: center;
+            padding: 24px;
+            background: var(--yellow);
+        }
+
+        .loader.active {
+            display: grid;
+        }
+
+        .loader-box {
+            width: min(420px, 100%);
+            padding: 34px;
+            background: var(--white);
+            border: 4px solid var(--ink);
+            box-shadow: 12px 12px 0 var(--ink);
+            text-align: center;
+        }
+
+        .loader-blocks {
+            display: flex;
+            justify-content: center;
+            gap: 9px;
+            margin-bottom: 22px;
+        }
+
+        .loader-block {
+            width: 24px;
+            height: 24px;
+            background: var(--blue);
+            border: 2px solid var(--ink);
+            animation: bounce 700ms infinite alternate;
+        }
+
+        .loader-block:nth-child(2) {
+            background: var(--coral);
+            animation-delay: 140ms;
+        }
+
+        .loader-block:nth-child(3) {
+            background: var(--mint);
+            animation-delay: 280ms;
+        }
+
+        .loader-title {
+            margin: 0;
+            font-family: "Archivo Black", Arial Black, sans-serif;
+            font-size: clamp(1.5rem, 6vw, 2.4rem);
+            text-transform: uppercase;
+        }
+
+        @keyframes bounce {
+            to {
+                transform: translateY(-12px);
+            }
+        }
+
+        @media (max-width: 1050px) {
+            .workspace {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .image-panel:last-child {
+                grid-column: 1 / -1;
+                width: min(620px, 100%);
+                justify-self: center;
+            }
+
+            .control-bar {
+                grid-template-columns: minmax(200px, 1fr) minmax(260px, 2fr) auto;
+            }
+
+            .generate-button {
+                grid-column: 1 / -1;
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .topbar {
+                min-height: 62px;
+                padding: 10px 16px;
+            }
+
+            .brand-mark {
+                width: 30px;
+                height: 30px;
+            }
+
+            .nav-link {
+                padding: 6px;
+                font-size: 0.8rem;
+            }
+
+            .section-inner {
+                width: min(100% - 24px, 1480px);
+            }
+
+            .playground {
+                padding-top: 34px;
+            }
+
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+
+            .image-panel:last-child {
+                grid-column: auto;
+                width: 100%;
+            }
+
+            .control-bar {
+                grid-template-columns: 1fr auto;
+                gap: 14px;
+                padding: 16px;
+            }
+
+            .strength-range {
+                grid-column: 1 / -1;
+                grid-row: 2;
+            }
+
+            .generate-button {
+                grid-column: 1 / -1;
+            }
+
+            .example-case {
+                grid-template-columns: 1fr;
+                gap: 14px;
+            }
+
+            .example-operator {
+                transform: rotate(90deg);
+                justify-self: center;
+            }
+
+            .example-image {
+                max-height: 330px;
+            }
+        }
+
+        @media (max-width: 430px) {
+            .brand {
+                font-size: 1rem;
+            }
+
+            .nav-links {
+                gap: 0;
+            }
+
+            .nav-link {
+                font-size: 0.7rem;
+            }
+
+            .section-heading {
+                align-items: start;
+            }
+
+            .section-title {
+                font-size: 2.2rem;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            html {
+                scroll-behavior: auto;
+            }
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="#playground" aria-label="Artshift playground">
+            <span class="brand-mark"><i data-lucide="blend"></i></span>
+            Art//Shift
+        </a>
+        <nav class="nav-links" aria-label="Primary navigation">
+            <a class="nav-link" href="#playground">Playground</a>
+            <a class="nav-link" href="#examples">Examples</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="playground" id="playground">
+            <div class="section-inner">
+                <div class="section-heading">
+                    <h1 class="section-title">Playground</h1>
+                    <span class="section-index">01</span>
+                </div>
+
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    {{ form.hidden_tag() }}
+
+                    <div class="workspace">
+                        <article class="image-panel">
+                            <div class="panel-header content">
+                                <span>Content image</span>
+                                <span class="panel-number">01</span>
+                            </div>
+                            <div class="preview" id="contentPreview">
+                                {% if content_image %}
+                                    <img src="{{ url_for('web.send_image', filename=content_image) }}" alt="Selected content image">
+                                {% else %}
+                                    <div class="empty-state">
+                                        <i data-lucide="image-plus"></i>
+                                        <span>No image selected</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="panel-actions">
+                                {{ form.content(class="file-input", accept="image/png,image/jpeg", onchange="previewFile(this, 'contentPreview')") }}
+                                <label class="upload-button" for="{{ form.content.id }}">
+                                    <i data-lucide="upload"></i>
+                                    Choose image
+                                </label>
+                            </div>
+                        </article>
+
+                        <article class="image-panel">
+                            <div class="panel-header style">
+                                <span>Style image</span>
+                                <span class="panel-number">02</span>
+                            </div>
+                            <div class="preview" id="stylePreview">
+                                {% if style_image %}
+                                    <img src="{{ url_for('web.send_image', filename=style_image) }}" alt="Selected style image">
+                                {% else %}
+                                    <div class="empty-state">
+                                        <i data-lucide="palette"></i>
+                                        <span>No style selected</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="panel-actions">
+                                {{ form.style(class="file-input", accept="image/png,image/jpeg", onchange="previewFile(this, 'stylePreview')") }}
+                                <label class="upload-button" for="{{ form.style.id }}">
+                                    <i data-lucide="upload"></i>
+                                    Choose style
+                                </label>
+                            </div>
+                        </article>
+
+                        <article class="image-panel" id="resultPanel">
+                            <div class="panel-header result">
+                                <span>Result</span>
+                                <span class="panel-number">03</span>
+                            </div>
+                            <div class="preview">
+                                {% if result_image %}
+                                    <img src="{{ url_for('web.send_image', filename=result_image) }}" alt="Stylized result">
+                                {% else %}
+                                    <div class="empty-state result-waiting">
+                                        <i data-lucide="sparkles"></i>
+                                        <span>Waiting for artwork</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="panel-actions">
+                                {% if result_image %}
+                                    <a class="download-button" href="{{ url_for('web.send_image', filename=result_image) }}" download>
+                                        <i data-lucide="download"></i>
+                                        Download result
+                                    </a>
+                                {% else %}
+                                    <span class="download-button" aria-disabled="true" style="background: var(--muted); cursor: default; box-shadow: none; transform: none;">
+                                        <i data-lucide="download"></i>
+                                        No result yet
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </article>
+                    </div>
+
+                    <div class="control-bar">
+                        <label class="strength-label" for="alphaRange">
+                            Style strength
+                            <output class="strength-value" id="rangeValue" for="alphaRange">{{ form.alpha.data or '1.0' }}</output>
+                        </label>
+                        {{ form.alpha(class="strength-range", id="alphaRange", type="range", min="0", max="1", step="0.1") }}
+                        <a class="icon-button" href="{{ url_for('web.index') }}" title="Reset playground" aria-label="Reset playground">
+                            <i data-lucide="rotate-ccw"></i>
+                        </a>
+                        <button class="button generate-button" type="submit">
+                            <i data-lucide="wand-sparkles"></i>
+                            Create artwork
+                        </button>
+                    </div>
+                </form>
+
+                {% if error %}
+                    <div class="error-message" role="alert">
+                        <i data-lucide="circle-alert"></i>
+                        <span>{{ error }}</span>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="examples" id="examples">
+            <div class="section-inner">
+                <div class="section-heading">
+                    <h2 class="section-title">Examples</h2>
+                    <span class="section-index">02</span>
+                </div>
+
+                <div class="example-list">
+                    <article class="example-case">
+                        <div class="example-step">
+                            <span class="example-label">Content</span>
+                            <img class="example-image" src="{{ url_for('web.send_example', filename='brad_pitt.jpg') }}" alt="Brad Pitt content example">
+                        </div>
+                        <span class="example-operator" aria-hidden="true"><i data-lucide="plus"></i></span>
+                        <div class="example-step">
+                            <span class="example-label">Style</span>
+                            <img class="example-image" src="{{ url_for('web.send_example', filename='sketch.png') }}" alt="Sketch style example">
+                        </div>
+                        <span class="example-operator" aria-hidden="true"><i data-lucide="arrow-right"></i></span>
+                        <div class="example-step">
+                            <span class="example-label">Result</span>
+                            <img class="example-image" src="{{ url_for('web.send_example', filename='stylized_brad_pitt.jpg') }}" alt="Sketch style transfer result">
+                        </div>
+                    </article>
+
+                    <article class="example-case">
+                        <div class="example-step">
+                            <span class="example-label">Content</span>
+                            <img class="example-image" src="{{ url_for('web.send_example', filename='brad_pitt.jpg') }}" alt="Brad Pitt content example">
+                        </div>
+                        <span class="example-operator" aria-hidden="true"><i data-lucide="plus"></i></span>
+                        <div class="example-step">
+                            <span class="example-label">Style</span>
+                            <img class="example-image" src="{{ url_for('web.send_example', filename='picasso_seated_nude_hr.jpg') }}" alt="Picasso style example">
+                        </div>
+                        <span class="example-operator" aria-hidden="true"><i data-lucide="arrow-right"></i></span>
+                        <div class="example-step">
+                            <span class="example-label">Result</span>
+                            <img class="example-image" src="{{ url_for('web.send_example', filename='stylized_brad_pitt (1).jpg') }}" alt="Picasso style transfer result">
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="loader" id="loader" role="status" aria-live="polite" aria-label="Creating artwork">
+        <div class="loader-box">
+            <div class="loader-blocks" aria-hidden="true">
+                <span class="loader-block"></span>
+                <span class="loader-block"></span>
+                <span class="loader-block"></span>
+            </div>
+            <p class="loader-title">Creating artwork</p>
+        </div>
+    </div>
+
+    <script>
+        function renderIcons() {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }
+
+        function previewFile(input, previewId) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+
+            const preview = document.getElementById(previewId);
+            const reader = new FileReader();
+            reader.addEventListener("load", function () {
+                const image = document.createElement("img");
+                image.src = reader.result;
+                image.alt = "Selected image preview";
+                preview.replaceChildren(image);
+            });
+            reader.readAsDataURL(file);
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            renderIcons();
+
+            const range = document.getElementById("alphaRange");
+            const rangeValue = document.getElementById("rangeValue");
+            if (range && rangeValue) {
+                const updateRange = function () {
+                    rangeValue.value = Number(range.value).toFixed(1);
+                    rangeValue.textContent = Number(range.value).toFixed(1);
+                };
+                range.addEventListener("input", updateRange);
+                updateRange();
+            }
+
+            const form = document.getElementById("uploadForm");
+            const loader = document.getElementById("loader");
+            if (form && loader) {
+                form.addEventListener("submit", function () {
+                    loader.classList.add("active");
+                    loader.setAttribute("aria-busy", "true");
+                });
+            }
+
+            {% if result_image %}
+                document.getElementById("resultPanel").scrollIntoView({ block: "center" });
+            {% endif %}
+        });
+    </script>
+</body>
+</html>
