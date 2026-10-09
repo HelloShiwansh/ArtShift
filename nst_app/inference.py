@@ -24,7 +24,15 @@ class StyleTransferService:
     def stylize(self, content_image, style_image, alpha):
         content = self.transform(content_image).unsqueeze(0).to(self.device)
         style = self.transform(style_image).unsqueeze(0).to(self.device)
+        return self._stylize_tensors(content, style, alpha)
 
+    def stylize_prepared(self, content_image, style_image, alpha=1.0):
+        """Use the comparison's shared resolution without another resize."""
+        content = transforms.ToTensor()(content_image).unsqueeze(0).to(self.device)
+        style = transforms.ToTensor()(style_image).unsqueeze(0).to(self.device)
+        return self._stylize_tensors(content, style, alpha)
+
+    def _stylize_tensors(self, content, style, alpha):
         with torch.no_grad():
             content_features = self.encoder(content, is_test=True)
             style_features = self.encoder(style, is_test=True)

@@ -21,6 +21,9 @@ def create_app(test_config=None):
         EXAMPLES_FOLDER=str(PROJECT_ROOT / "assets" / "examples"),
         VGG_MODEL_PATH=str(PROJECT_ROOT / "models" / "vgg_normalised.pth"),
         DECODER_MODEL_PATH=str(PROJECT_ROOT / "models" / "decoder_final.pth"),
+        FAST_NST_MODEL_PATH=str(PROJECT_ROOT / "models" / "mosaic.pth"),
+        COMPARISON_STYLE_PATH=str(PROJECT_ROOT / "assets" / "examples" / "mosaic.jpg"),
+        COMPARISON_IMAGE_SIZE=512,
     )
 
     if test_config:
@@ -29,11 +32,18 @@ def create_app(test_config=None):
     Path(app.config["UPLOAD_FOLDER"]).mkdir(parents=True, exist_ok=True)
 
     from nst_app.inference import StyleTransferService
+    from nst_app.comparison import ComparisonService
     from nst_app.web import bp
 
     app.extensions["style_transfer"] = StyleTransferService(
         app.config["VGG_MODEL_PATH"],
         app.config["DECODER_MODEL_PATH"],
+    )
+    app.extensions["comparison"] = ComparisonService(
+        app.extensions["style_transfer"],
+        app.config["FAST_NST_MODEL_PATH"],
+        app.config["COMPARISON_STYLE_PATH"],
+        app.config["COMPARISON_IMAGE_SIZE"],
     )
     app.register_blueprint(bp)
 
