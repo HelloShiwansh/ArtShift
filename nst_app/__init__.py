@@ -15,6 +15,7 @@ def create_app(test_config=None):
     )
     app.config.from_mapping(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret-key"),
+        TEMPLATES_AUTO_RELOAD=True,
         MAX_CONTENT_LENGTH=20 * 1024 * 1024,
         UPLOAD_FOLDER=str(PROJECT_ROOT / "instance" / "uploads"),
         EXAMPLES_FOLDER=str(PROJECT_ROOT / "assets" / "examples"),
